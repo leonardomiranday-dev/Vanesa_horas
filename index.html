@@ -51,17 +51,7 @@ a{color:var(--rose);font-weight:700}
 <h1>Vanesa</h1>
 <p class="sub">Lunes a Jueves: 9:00 a 17:40, Viernes: 9:00 a 16:40</p>
 
-<section class="card" id="reg" hidden>
-  <b>Tus datos</b>
-  <label for="n">Nombre</label>
-  <input id="n" autocomplete="name">
-  <label for="p">Número de WhatsApp</label>
-  <input id="p" type="tel" inputmode="tel" autocomplete="tel" placeholder="9 1234 5678">
-  <p id="err" aria-live="polite"></p>
-  <button class="btn" id="save">Guardar datos</button>
-</section>
-
-<section id="app" hidden>
+<section id="app">
   <div class="clock">
     <button id="mark"><span id="ml"></span><b id="mt"></b></button>
     <p id="today"></p>
@@ -79,14 +69,13 @@ a{color:var(--rose);font-weight:700}
       <tbody id="rows"></tbody>
     </table></div>
   </div>
-  <button class="btn ghost" id="edit">Cambiar mis datos</button>
-  <p class="sub" style="margin-top:14px">Tus registros se guardan solo en este dispositivo.</p>
+  <p class="sub">Tus registros se guardan solo en este dispositivo.</p>
 </section>
 </main>
 <script>
-const K='vanesa:v1',EXIT={1:'17:40',2:'17:40',3:'17:40',4:'17:40',5:'16:40'},
+const K='vanesa:v1',TO='56950864936',EXIT={1:'17:40',2:'17:40',3:'17:40',4:'17:40',5:'16:40'},
 DAYS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-let S={user:null,rec:{}},editing=false,pend=null,last='';
+let S={rec:{}},pend=null,last='';
 try{const r=JSON.parse(localStorage.getItem(K));if(r&&r.rec)S=r}catch(e){}
 const $=id=>document.getElementById(id),pad=n=>String(n).padStart(2,'0'),
 save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}},
@@ -94,8 +83,7 @@ ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),
 hm=d=>pad(d.getHours())+':'+pad(d.getMinutes()),
 mins=t=>{const a=t.split(':');return +a[0]*60+ +a[1]},
 fmt=m=>Math.floor(m/60)+'h '+pad(m%60)+'m',
-wdOf=k=>new Date(k+'T00:00').getDay(),
-phone=p=>{const d=p.replace(/\D/g,'');return d.length===9?'56'+d:d};
+wdOf=k=>new Date(k+'T00:00').getDay();
 
 function calc(k,r,now){
   const o=r.o||now;if(!o)return{w:0,x:0};
@@ -104,19 +92,16 @@ function calc(k,r,now){
   return{w:b-a,x:e?Math.max(0,b-mins(e)):b-a};
 }
 function showWa(t,go){
-  const u='https://wa.me/'+phone(S.user.phone)+'?text='+encodeURIComponent(t);
+  const u='https://wa.me/'+TO+'?text='+encodeURIComponent(t);
   $('wa').innerHTML='<a href="'+u+'" target="_blank" rel="noopener">Abrir WhatsApp con el mensaje listo</a>';
   if(go)window.open(u,'_blank','noopener');
 }
 function render(){
-  const showReg=!S.user||editing;
-  $('reg').hidden=!showReg;$('app').hidden=showReg;
-  if(showReg)return;
   const n=new Date(),k=ymd(n),r=S.rec[k],wd=n.getDay();
   $('mt').textContent=hm(n);
   $('ml').textContent=!r?'Marcar ingreso':!r.o?'Marcar salida':'Jornada completa';
   $('mark').disabled=!!(r&&r.o);
-  $('today').textContent='Hola, '+S.user.name+'. Hoy es '+DAYS[wd]+(EXIT[wd]?' y tu salida es a las '+EXIT[wd]+'.':'; fuera de horario, todo lo trabajado cuenta como extra.');
+  $('today').textContent='Hoy es '+DAYS[wd]+(EXIT[wd]?' y tu salida es a las '+EXIT[wd]+'.':'; fuera de horario, todo lo trabajado cuenta como extra.');
   let W=0,X=0,rows='';
   Object.keys(S.rec).filter(d=>d.slice(0,7)===k.slice(0,7)).sort().reverse().forEach(d=>{
     const q=S.rec[d],c=calc(d,q,d===k?hm(n):null),dt=d.slice(8)+'/'+d.slice(5,7),ok=q.o||d===k;
@@ -132,19 +117,13 @@ $('mark').onclick=()=>{
   const n=new Date(),k=ymd(n),r=S.rec[k];
   if(!r){
     S.rec[k]={i:hm(n)};save();
-    showWa('Hola '+S.user.name+', tu ingreso quedó registrado el '+DAYS[n.getDay()]+' '+pad(n.getDate())+'/'+pad(n.getMonth()+1)+' a las '+hm(n)+'.'+(EXIT[n.getDay()]?' Tu salida es a las '+EXIT[n.getDay()]+'.':''),true);
+    showWa('Ingreso registrado el '+DAYS[n.getDay()]+' '+pad(n.getDate())+'/'+pad(n.getMonth()+1)+' a las '+hm(n)+'.'+(EXIT[n.getDay()]?' Salida programada: '+EXIT[n.getDay()]+'.':''),true);
   }else if(!r.o){
     r.o=hm(n);save();const c=calc(k,r);
-    showWa('Salida registrada a las '+r.o+'. Trabajadas: '+fmt(c.w)+'. Horas extras: '+fmt(c.x)+'.',false);
+    showWa('Salida registrada a las '+r.o+'. Trabajadas: '+fmt(c.w)+'. Horas extras: '+fmt(c.x)+'.',true);
   }
   render();
 };
-$('save').onclick=()=>{
-  const nm=$('n').value.trim(),ph=$('p').value.trim();
-  if(!nm||phone(ph).length<9){$('err').textContent='Escribe tu nombre y un número de WhatsApp de al menos 9 dígitos.';return}
-  $('err').textContent='';S.user={name:nm,phone:ph};editing=false;save();render();
-};
-$('edit').onclick=()=>{editing=true;$('n').value=S.user.name;$('p').value=S.user.phone;render()};
 $('rows').onclick=e=>{
   const b=e.target.closest('button[data-d]');if(!b)return;
   const d=b.dataset.d;
